@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agentic RL 翻页讲义</title>
+
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)']],
+      displayMath: [['\\[', '\\]']],
+      processEscapes: true,
+      processEnvironments: true,
+      packages: {'[+]': ['ams']}
+    },
+    chtml: {
+      scale: 0.96,
+      minScale: 0.55,
+      linebreaks: {automatic: true, width: 'container'}
+    },
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    }
+  };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+  :root{
+    --bg:#f6f8fb;
+    --card:#ffffff;
+    --ink:#132033;
+    --muted:#5b677a;
+    --line:#d7dfeb;
+    --accent:#2563eb;
+    --accent2:#0f766e;
+    --orange:#ea580c;
+    --red:#dc2626;
+    --green:#16a34a;
+    --purple:#7c3aed;
+    --shadow:0 24px 60px rgba(15, 23, 42, .14);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;color:var(--ink);background:radial-gradient(circle at top left,#edf5ff 0,#f8fafc 38%,#eef2f7 100%);}
+  body{overflow:hidden}
+  .deck{height:100%;display:flex;align-items:center;justify-content:center;padding:18px 24px 72px;position:relative;}
+  .slide{width:min(1180px, calc(100vw - 48px));height:min(720px, calc(100vh - 96px));background:var(--card);border:1px solid rgba(148,163,184,.45);box-shadow:var(--shadow);border-radius:28px;padding:34px 46px 58px;display:none;position:relative;overflow:hidden;overflow-y:auto;scrollbar-gutter:stable;}
+  .slide.active{display:block;animation:fade .18s ease-out}
+  @keyframes fade{from{opacity:.4;transform:translateY(8px) scale(.995)}to{opacity:1;transform:none}}
+  .slide::before{content:"";position:absolute;right:-110px;top:-110px;width:330px;height:330px;border-radius:50%;background:linear-gradient(135deg,rgba(37,99,235,.09),rgba(15,118,110,.06));z-index:0;}
+  .slide>*{position:relative;z-index:1}
+  .kicker{font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:800;margin-bottom:10px;}
+  h1{font-size:50px;line-height:1.05;margin:0 0 18px;letter-spacing:-.045em;}
+  h2{font-size:36px;line-height:1.12;margin:0 0 22px;letter-spacing:-.035em;}
+  h3{font-size:23px;line-height:1.25;margin:0 0 10px;}
+  p{font-size:20px;line-height:1.55;margin:0;color:var(--ink);}
+  .subtitle{font-size:23px;line-height:1.38;color:var(--muted);max-width:920px;}
+  .strong{font-weight:800;color:var(--ink)}
+  .small{font-size:17px;color:var(--muted);line-height:1.45;}
+  .tiny{font-size:13px;color:#64748b;line-height:1.35;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:stretch;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch;}
+  .box{border:1px solid var(--line);border-radius:20px;background:#fbfdff;padding:22px;}
+  .box.blue{background:#eff6ff;border-color:#bfdbfe}
+  .box.green{background:#ecfdf5;border-color:#bbf7d0}
+  .box.orange{background:#fff7ed;border-color:#fed7aa}
+  .box.purple{background:#f5f3ff;border-color:#ddd6fe}
+  .box.red{background:#fff1f2;border-color:#fecdd3}
+  .formula{font-family:Georgia, "Times New Roman", "STSong", serif;background:linear-gradient(180deg,#111827,#0f172a);color:#f8fafc;border-radius:18px;padding:12px 18px;font-size:19px;line-height:1.36;margin:10px 0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10),0 12px 28px rgba(15,23,42,.12);overflow-x:auto;overflow-y:hidden;max-width:100%;}
+  .formula.light{background:linear-gradient(180deg,#ffffff,#f8fafc);color:#0f172a;border:1px solid #dbe3ef;box-shadow:0 8px 20px rgba(15,23,42,.04);}
+  .formula mjx-container{margin:.18em 0!important;font-size:100%!important;max-width:100%;overflow-x:auto;overflow-y:hidden;}
+  .formula mjx-container[display="true"]{text-align:left!important;display:block!important;padding:2px 0;}
+  .formula .desc{font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;font-size:16px;line-height:1.4;color:#64748b;margin:4px 0;}
+  .formula:not(.light) .desc{color:#cbd5e1;}
+  .tag{display:inline-block;border-radius:999px;background:#eaf2ff;color:#1d4ed8;font-weight:800;font-size:15px;padding:6px 11px;margin:4px 6px 4px 0;}
+  .tag.green{background:#dcfce7;color:#15803d}.tag.orange{background:#ffedd5;color:#c2410c}.tag.purple{background:#ede9fe;color:#6d28d9}.tag.red{background:#fee2e2;color:#b91c1c}
+  ul{margin:10px 0 0 0;padding:0;list-style:none;}
+  li{font-size:19px;line-height:1.48;margin:12px 0;padding-left:28px;position:relative;color:#1f2937;}
+  li::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--accent);position:absolute;left:4px;top:.73em;}
+  .compact li{font-size:17px;line-height:1.38;margin:8px 0;}
+  .quote{font-size:25px;line-height:1.35;font-weight:850;letter-spacing:-.02em;border-left:7px solid var(--accent);padding:8px 0 8px 24px;margin:26px 0 0;color:#0f172a;}
+  .footer-note{position:absolute;left:46px;right:46px;bottom:20px;display:flex;justify-content:space-between;gap:20px;align-items:flex-end;color:#64748b;font-size:13px;}
+  .controls{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.85);border:1px solid rgba(148,163,184,.45);border-radius:999px;padding:10px 14px;box-shadow:0 10px 30px rgba(15,23,42,.12);backdrop-filter: blur(12px);}
+  button{border:0;background:#0f172a;color:white;border-radius:999px;padding:10px 16px;font-size:15px;font-weight:800;cursor:pointer;}
+  button.secondary{background:#e2e8f0;color:#0f172a;}
+  button:hover{filter:brightness(1.05)}
+  .counter{font-size:15px;font-weight:800;color:#334155;min-width:54px;text-align:center;}
+  .progress{position:absolute;left:0;right:0;bottom:0;height:6px;background:#e2e8f0;}
+  .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s ease;}
+  .pillrow{margin-top:22px;}
+  .diagram{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;}
+  .node{border:1px solid #cbd5e1;background:#fff;border-radius:18px;padding:13px 14px;text-align:center;min-width:105px;font-weight:850;box-shadow:0 8px 18px rgba(15,23,42,.05);}
+  .node small{display:block;color:#64748b;font-weight:600;margin-top:4px;font-size:13px;}
+  .arrow{flex:1;height:2px;background:#94a3b8;position:relative;min-width:22px;}
+  .arrow::after{content:"";position:absolute;right:-1px;top:-5px;border-left:10px solid #94a3b8;border-top:6px solid transparent;border-bottom:6px solid transparent;}
+  .loop{margin-top:18px;border:2px dashed #cbd5e1;border-radius:24px;padding:20px;background:#f8fafc;}
+  .loopgrid{display:grid;grid-template-columns:1.15fr .7fr 1fr;gap:16px;align-items:center;}
+  .mini{font-size:15px;line-height:1.3;color:#475569;}
+  code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;background:#e2e8f0;border-radius:5px;padding:1px 4px;font-size:.9em;}
+  .code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:14px;padding:12px;font-size:15px;line-height:1.35;white-space:pre-wrap;color:#0f172a;}
+  table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border-radius:18px;border:1px solid var(--line);font-size:16px;background:white;}
+  th{background:#f1f5f9;text-align:left;color:#334155;padding:10px 14px;font-size:15px;}
+  td{border-top:1px solid var(--line);padding:10px 14px;vertical-align:top;color:#1f2937;}
+  .takeaway{font-size:30px;line-height:1.32;font-weight:900;letter-spacing:-.03em;margin-top:20px;}
+  .muted{color:var(--muted)}
+  .highlight{background:linear-gradient(transparent 62%, #bfdbfe 62%)}
+  .steps{counter-reset:step;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px;}
+  .step{counter-increment:step;border:1px solid var(--line);border-radius:18px;padding:14px;background:#fff;min-height:102px;position:relative;}
+  .step::before{content:counter(step);display:inline-flex;width:28px;height:28px;border-radius:50%;background:#0f172a;color:white;align-items:center;justify-content:center;font-weight:900;font-size:14px;margin-bottom:10px;}
+  .step b{display:block;margin-bottom:6px;font-size:18px}.step span{display:block;color:#64748b;font-size:15px;line-height:1.35}
+
+  /* MathJax + small-screen reliability fixes */
+  mjx-container { max-width: 100%; }
+  mjx-container mjx-math { max-width: 100%; }
+  mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; }
+  .formula::-webkit-scrollbar, .slide::-webkit-scrollbar { height: 8px; width: 8px; }
+  .formula::-webkit-scrollbar-thumb, .slide::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+  .slide.active { display: block; }
+  @media (max-width: 1000px), (max-height: 760px){
+    .slide{padding:26px 34px 58px;height:calc(100vh - 92px);}
+    h1{font-size:42px} h2{font-size:31px} h3{font-size:20px}
+    p{font-size:18px}.subtitle{font-size:20px}.quote{font-size:22px}
+    li{font-size:17px}.small{font-size:15px}.tiny{font-size:12px}
+    .grid2{gap:18px}.grid3{gap:12px}.box{padding:16px}.formula{font-size:17px;padding:10px 14px}
+    .steps{grid-template-columns:repeat(2,1fr)}
+    table{font-size:14px} th,td{padding:8px 10px}
+  }
+  @media (max-width: 760px){
+    body{overflow:auto}.deck{height:auto;min-height:100vh;padding:12px 10px 76px}.slide{width:calc(100vw - 20px);height:auto;min-height:calc(100vh - 96px);padding:24px 22px 64px;border-radius:20px}
+    .grid2,.grid3,.loopgrid,.steps{grid-template-columns:1fr}.diagram{flex-direction:column;align-items:stretch}.arrow{height:18px;width:2px;margin:0 auto;min-width:0}.arrow::after{right:-5px;top:14px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #94a3b8;border-bottom:0}.footer-note{left:22px;right:22px}
+  }
+
+  @media print{body{overflow:auto;background:white}.deck{display:block;padding:0}.slide{display:block;width:100vw;height:56.25vw;page-break-after:always;border:0;box-shadow:none;border-radius:0}.controls,.progress{display:none}}
+</style>
+</head>
+<body>
+<div class="deck">
+
+<section class="slide active">
+  <div class="kicker">LLM Advanced Learning · Chapter: Agentic Post-training</div>
+  <h1>Agentic RL：<br/>从“答题模型”到“行动模型”</h1>
+  <p class="subtitle">Agentic RL 不是只换成 PPO / GRPO，而是把优化对象从一个答案扩展为一段可执行、可反馈、可验证的长程交互轨迹。</p>
+  <div class="quote">SFT 学会怎么行动；RL 学会哪些行动真的有效。</div>
+  <div class="pillrow">
+    <span class="tag">trajectory</span><span class="tag green">tool calling</span><span class="tag orange">environment feedback</span><span class="tag purple">verifier reward</span><span class="tag red">long horizon</span>
+  </div>
+  <div class="footer-note"><span>建议讲授时间：15–20 min</span><span>按 ← / → 或空格翻页</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">01 · What changed?</div>
+  <h2>核心变化：从 single-turn answer 到 multi-turn trajectory</h2>
+  <div class="grid2">
+    <div class="box blue">
+      <h3>传统 RL / Reasoning RL</h3>
+      <div class="formula light">\[
+x \rightarrow y
+\]
+\[
+R = R(x,y)
+\]</div>
+      <ul>
+        <li>输入一个题目，模型输出一个答案。</li>
+        <li>reward 多数来自最终答案是否正确。</li>
+        <li>适合数学、代码、选择题、短程推理。</li>
+      </ul>
+    </div>
+    <div class="box green">
+      <h3>Agentic RL</h3>
+      <div class="formula light">\[
+x \rightarrow \tau=(a_1,o_1,a_2,o_2,\ldots,a_T,o_T,y)
+\]
+\[
+R = R(x,\tau)
+\]</div>
+      <ul>
+        <li>模型要多轮行动：计划、调工具、读反馈、修正。</li>
+        <li>reward 不只看答案，也看工具、过程、效率、错误恢复。</li>
+        <li>适合 coding agent、web agent、function calling、数据分析。</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-note"><span>讲法：Agentic RL 的对象不是 response，而是 trajectory。</span><span>2 / 11</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">02 · Agentic loop</div>
+  <h2>Agent 不是单个 LLM，而是 LLM + Harness + Environment</h2>
+  <div class="loop">
+    <div class="loopgrid">
+      <div class="box">
+        <h3>Context</h3>
+        <div class="mini">instruction / tool schema / history / memory / constraints</div>
+      </div>
+      <div class="node">LLM Policy<small>πθ(·|sₜ)</small></div>
+      <div class="box orange">
+        <h3>Environment</h3>
+        <div class="mini">filesystem / browser / code executor / API / user simulator</div>
+      </div>
+    </div>
+    <div class="diagram">
+      <div class="node">Generate<br/><small>text tokens</small></div><div class="arrow"></div>
+      <div class="node">Tool Call<br/><small>aₜ</small></div><div class="arrow"></div>
+      <div class="node">Observation<br/><small>oₜ</small></div><div class="arrow"></div>
+      <div class="node">Next State<br/><small>sₜ₊₁</small></div>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:18px">
+    <div class="box purple"><h3>每一步做两件事</h3><ul class="compact"><li>模型生成 token。</li><li>如果生成 tool call，就执行工具并拿到 observation。</li></ul></div>
+    <div class="box green"><h3>什么时候结束？</h3><ul class="compact"><li>达到 max steps。</li><li>测试通过 / verifier 判定完成。</li><li>模型输出 finish / final answer。</li></ul></div>
+  </div>
+  <div class="footer-note"><span>讲法：agentic loop 让模型进入“行动—反馈—再行动”的闭环。</span><span>3 / 11</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">03 · Tool calling as action</div>
+  <h2>Tool call 是模型 token stream 里的一种 action</h2>
+  <div class="grid2">
+    <div>
+      <div class="formula light"><div class="code">&lt;tools&gt;
+  search_web(query: string)
+  run_python(code: string)
+&lt;/tools&gt;
+
+&lt;tool_call&gt;
+  {"name":"run_python", "arguments":{"code":"..."}}
+&lt;/tool_call&gt;
+
+&lt;tool_response&gt;
+  execution result / error message
+&lt;/tool_response&gt;</div></div>
+    </div>
+    <div class="box blue">
+      <h3>教学重点</h3>
+      <ul>
+        <li>tool schema 告诉模型有哪些动作可选。</li>
+        <li>tool call 由模型生成，要合法、参数正确。</li>
+        <li>tool response 是环境反馈，不是模型要背诵的标签。</li>
+        <li>模型要读懂 observation，再决定下一步。</li>
+      </ul>
+    </div>
+  </div>
+  <div class="quote" style="font-size:25px">不要把 tool use 理解成 prompt trick；它是把“动作空间”显式交给模型。</div>
+  <div class="footer-note"><span>讲法：工具调用格式通常需要 SFT cold start，否则 RL 探索会很稀疏。</span><span>4 / 11</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">04 · Formalization</div>
+  <h2>Agentic RL = Multi-turn MDP</h2>
+  <div class="grid2">
+    <div class="box">
+      <h3>状态 State</h3>
+      <div class="formula light">\[
+s_t=(c_t,e_t)
+\]
+<div class="desc">\(c_t\)：LLM-visible context，包括 instruction、history、tool calls、observations</div>
+<div class="desc">\(e_t\)：external environment state，包括 files、database、browser、API state</div></div>
+    </div>
+    <div class="box">
+      <h3>动作 / 转移 / 奖励</h3>
+      <div class="formula light">\[
+a_t \sim \pi_\theta(\cdot\mid s_t)
+\]
+\[
+s_{t+1}=T(s_t,a_t,o_t)
+\]
+\[
+\tau=(s_0,a_1,o_1,r_1,\ldots,s_T,r_T)
+\]</div>
+    </div>
+  </div>
+  <div class="formula">\[
+\max_\theta\; \mathbb{E}_{\tau\sim\pi_\theta}\left[R(\tau)\right]
+-\beta\,D_{\mathrm{KL}}(\pi_\theta\|\pi_{\mathrm{ref}})
+\]</div>
+  <div class="grid3">
+    <div class="box blue"><h3>文本动作</h3><p class="small">append tokens to context</p></div>
+    <div class="box orange"><h3>工具动作</h3><p class="small">modify environment + return observation</p></div>
+    <div class="box green"><h3>奖励</h3><p class="small">outcome reward + process reward</p></div>
+  </div>
+  <div class="footer-note"><span>讲法：区别在于 state 包含环境状态，transition 可能由工具执行决定。</span><span>5 / 11</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">05 · Training recipe</div>
+  <h2>训练流程：SFT cold start → RL rollout</h2>
+  <div class="diagram">
+    <div class="node">Task Seed<small>x</small></div><div class="arrow"></div>
+    <div class="node">Tool Trajectory<small>τ*</small></div><div class="arrow"></div>
+    <div class="node">SFT<small>format & behavior</small></div><div class="arrow"></div>
+    <div class="node">Rollout<small>τᵢ ~ πθ</small></div><div class="arrow"></div>
+    <div class="node">Verifier<small>Rᵢ</small></div><div class="arrow"></div>
+    <div class="node">RL Update<small>PPO / GRPO</small></div>
+  </div>
+  <div class="grid2" style="margin-top:24px">
+    <div class="box blue">
+      <h3>SFT：学会怎么行动</h3>
+      <div class="formula light">\[
+\mathcal{L}_{\mathrm{SFT}}
+= -\sum_j m_j\log \pi_\theta(z_j\mid z_{\lt j})
+\]
+\[
+m_j=1:\;\text{assistant action / tool call / final answer}
+\]
+\[
+m_j=0:\;\text{user / system / tool observation}
+\]</div>
+    </div>
+    <div class="box green">
+      <h3>RL：学会哪些行动有效</h3>
+      <div class="formula light">\[
+\tau_i\sim\pi_\theta(\cdot\mid x)
+\]
+\[
+\begin{aligned}
+R_i={}&R_{\mathrm{final}}+\lambda_1R_{\mathrm{tool}}+\lambda_2R_{\mathrm{process}}\\
+&-\lambda_3N_{\mathrm{call}}-\lambda_4R_{\mathrm{invalid}}
+\end{aligned}
+\]</div>
+    </div>
+  </div>
+  <div class="footer-note"><span>讲法：SFT 是冷启动，不是终点；RL 才把环境反馈变成能力。</span><span>6 / 11</span></div>
+</section>
+
+
+
+<section class="slide">
+  <div class="kicker">06 · Reward checkers</div>
+  <h2>Reward 怎么实现？本质是一组可执行 checker</h2>
+  <div class="formula light">\[
+\begin{aligned}
+R(\tau)=&\;w_{out}R_{out}+\sum_{t=1}^{T}\left(
+  w_fR_{format,t}+w_{tool}R_{tool,t}+w_{arg}R_{arg,t}
+  +w_{exec}R_{exec,t}+w_{prog}R_{progress,t}
+\right) \\
+&-\alpha N_{call}-\beta N_{invalid}-\gamma N_{timeout}
+\end{aligned}
+\]</div>
+  <div class="grid3" style="margin-top:16px">
+    <div class="box blue"><h3>R<sub>format</sub></h3><p class="small">是否有合法的 <code>&lt;tool_call&gt;</code>、JSON 可解析、字段完整。</p></div>
+    <div class="box green"><h3>R<sub>tool</sub></h3><p class="small">工具名是否选对：search / run / edit / browser / API。</p></div>
+    <div class="box orange"><h3>R<sub>arg</sub></h3><p class="small">参数名和值是否正确：日期、城市、id、文件路径、query。</p></div>
+    <div class="box purple"><h3>R<sub>exec</sub></h3><p class="small">工具是否成功执行：无 schema error、runtime error、timeout。</p></div>
+    <div class="box red"><h3>R<sub>out</sub></h3><p class="small">最终答案 / 环境状态 / 测试结果是否正确。</p></div>
+    <div class="box"><h3>Penalty</h3><p class="small">无效调用、死循环、过多调用、提前终止、污染环境。</p></div>
+  </div>
+  <div class="quote" style="font-size:23px">最重要：不要把 reward 当成一个神秘模型，它通常就是 parse、execute、compare、test。</div>
+  <div class="footer-note"><span>讲法：final reward 看完成没有；intermediate reward 看每一步有没有推进环境状态。</span><span>7 / 11</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">07 · Concrete implementation</div>
+  <h2>一个具体例子：工具调用 reward 如何打分</h2>
+  <div class="grid2">
+    <div class="box blue">
+      <h3>航班查询 agent</h3>
+      <div class="code">Task: 找东京到首尔下周五最便宜直飞航班
+
+Gold tool:
+search_flights(origin, destination, date, direct_only)
+
+Reward:
+R_format = valid_xml_json(tool_call)
+R_tool   = name == "search_flights"
+R_arg    = F1(arg_names) + value_match(date/city/direct_only)
+R_exec   = tool runs successfully
+R_out    = final answer == cheapest direct flight</div>
+    </div>
+    <div class="box green">
+      <h3>Coding agent</h3>
+      <div class="code">Task: 修复 repo 里的 bug
+
+Trajectory:
+read_file → edit_file → run_tests → fix_error → finish
+
+Reward:
+R_exec = command / edit succeeds
+R_progress = more tests pass than before
+R_out = (# passed tests) / (# all tests)
+Penalty = invalid edit, timeout, too many calls</div>
+    </div>
+  </div>
+  <div class="formula light" style="margin-top:18px">\[
+R_{eff}=\mathbf{1}[R_{out}=1]\cdot\frac{0.2}{1+\max(0,N_{call}-N_{min})}
+\]
+<div class="desc">调用次数惩罚要小心：最好只在任务完成后奖励“少而准”，否则模型会学会少调用但不完成任务。</div></div>
+  <div class="quote" style="font-size:23px">更推荐比较 final state / tests，而不是强迫模型复现唯一工具路径。</div>
+  <div class="footer-note"><span>讲法：同一个目标可能有多条有效路径；reward 应该鼓励完成任务，而不是锁死轨迹。</span><span>8 / 11</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">08 · RL objective</div>
+  <h2>算法可以是 GRPO / PPO，关键是 reward 作用在整条轨迹</h2>
+  <div class="grid2">
+    <div class="box purple">
+      <h3>GRPO 讲法</h3>
+      <div class="formula light">\[
+A_i=\frac{R_i-\mathrm{mean}(R)}{\mathrm{std}(R)}
+\]
+\[
+r_i=\frac{\pi_\theta(\tau_i\mid x)}{\pi_{\mathrm{old}}(\tau_i\mid x)}
+\]
+\[
+\begin{aligned}
+\mathcal{L}_{\mathrm{GRPO}}
+=-\mathbb{E}\Big[\min(&r_iA_i,\\
+&\operatorname{clip}(r_i,1-\epsilon,1+\epsilon)A_i)\Big]
+\end{aligned}
+\]</div>
+    </div>
+    <div class="box orange">
+      <h3>为什么 long-horizon 更难</h3>
+      <ul>
+        <li>trajectory 长，credit assignment 难。</li>
+        <li>每条 rollout 长度不同，完成时间不同。</li>
+        <li>工具错误、环境随机性会引入噪声。</li>
+        <li>有些系统会用 PPO + critic 做 token-level advantage，提高稳定性。</li>
+      </ul>
+    </div>
+  </div>
+  <div class="quote" style="font-size:25px">不要把 Agentic RL 讲成“GRPO 的又一个应用”；它的难点在 trajectory、environment、reward 和 rollout infrastructure。</div>
+  <div class="footer-note"><span>讲法：算法名字不是灵魂；可验证交互任务才是灵魂。</span><span>9 / 11</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">09 · Data construction</div>
+  <h2>数据构造：从 task seed 到可验证轨迹</h2>
+  <div class="steps">
+    <div class="step"><b>Task seed</b><span>用户目标、初始环境、约束、ground truth / verifier。</span></div>
+    <div class="step"><b>Tool schema</b><span>定义可用动作：search、browser、shell、edit、API、ask user。</span></div>
+    <div class="step"><b>SFT trajectory</b><span>专家轨迹或合成轨迹：何时调工具、参数、如何读反馈。</span></div>
+    <div class="step"><b>RL rollout</b><span>模型自己探索 K 条轨迹，环境执行，verifier 打分。</span></div>
+  </div>
+  <table style="margin-top:22px">
+    <thead><tr><th>数据类型</th><th>训练什么能力</th><th>例子</th></tr></thead>
+    <tbody>
+      <tr><td>单步 tool call</td><td>schema 理解、合法参数</td><td>天气查询、函数调用、简单 API</td></tr>
+      <tr><td>多步 trajectory</td><td>规划、读 observation、连续行动</td><td>web search、数据分析、订票流程</td></tr>
+      <tr><td>失败-修正轨迹</td><td>error recovery</td><td>JSON 错、日期格式错、测试失败后修复</td></tr>
+      <tr><td>可执行环境 rollout</td><td>真实反馈下优化任务成功率</td><td>SWE-bench：读文件→改代码→跑测试→修 bug</td></tr>
+    </tbody>
+  </table>
+  <div class="footer-note"><span>讲法：好数据不是“漂亮答案”，而是“能被环境验证的行动历史”。</span><span>10 / 11</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">10 · Take-away</div>
+  <h2>Take-away</h2>
+  <div class="grid3">
+    <div class="box blue"><h3>1. 优化对象变了</h3><p class="small">从 answer 变成 trajectory：工具、观察、修正、终止都进入训练对象。</p></div>
+    <div class="box green"><h3>2. 数据形态变了</h3><p class="small">SFT 需要 tool-calling 轨迹；RL 需要可执行环境和 verifier，而不是普通 QA 标注。</p></div>
+    <div class="box orange"><h3>3. 工程系统变了</h3><p class="small">要支持并发 rollout、环境隔离、异步训练、on-policy 数据新鲜度控制。</p></div>
+  </div>
+  <div class="takeaway"><span class="highlight">Agentic RL 的本质：</span><br/>让模型在可验证环境中，通过长程行动轨迹学习“如何完成任务”。</div>
+  <div class="formula light" style="margin-top:26px"><div class="desc">可复用模板：</div>
+\[
+\text{Task}+\text{Tool Schema}+\text{Sandbox Env}+\text{SFT Trajectory}+\text{Verifier Reward}+\text{PPO/GRPO}
+\]</div>
+  <div class="footer-note"><span>补一句：agentic post-training 不只是封装 agent，而是把 agent 行为拿来训练模型。</span><span>11 / 11</span></div>
+</section>
+
+</div>
+<div class="controls">
+  <button class="secondary" id="prev">← 上一页</button>
+  <span class="counter" id="counter">1 / 11</span>
+  <button id="next">下一页 →</button>
+</div>
+<div class="progress"><div class="bar" id="bar"></div></div>
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+let idx=0;
+function show(i){
+  idx=Math.max(0,Math.min(slides.length-1,i));
+  slides.forEach((s,k)=>s.classList.toggle('active',k===idx));
+  document.getElementById('counter').textContent=`${idx+1} / ${slides.length}`;
+  document.getElementById('bar').style.width=`${((idx+1)/slides.length)*100}%`;
+  document.title=`Agentic RL 翻页讲义 · ${idx+1}/${slides.length}`;
+}
+document.getElementById('prev').onclick=()=>show(idx-1);
+document.getElementById('next').onclick=()=>show(idx+1);
+document.addEventListener('keydown',e=>{
+  if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();show(idx+1)}
+  if(['ArrowLeft','PageUp','Backspace'].includes(e.key)){e.preventDefault();show(idx-1)}
+  if(e.key==='Home')show(0);
+  if(e.key==='End')show(slides.length-1);
+});
+show(0);
+</script>
+</body>
+</html>

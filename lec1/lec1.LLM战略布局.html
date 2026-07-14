@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>大模型公司的技术下注：从 Chatbot 到 Long-horizon Agent</title>
+<style>
+  :root{
+    --bg:#06111f;
+    --panel:#0c1b2d;
+    --panel2:#10243b;
+    --text:#f4f8ff;
+    --muted:#9fb1c7;
+    --cyan:#55d7ff;
+    --blue:#4d7cff;
+    --violet:#9a7cff;
+    --green:#62d6a7;
+    --orange:#ffb45f;
+    --red:#ff7d86;
+    --line:rgba(255,255,255,.13);
+    --shadow:0 30px 80px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;color:var(--text)}
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(circle at 15% 15%,rgba(77,124,255,.17),transparent 32%),
+      radial-gradient(circle at 85% 18%,rgba(85,215,255,.12),transparent 28%),
+      radial-gradient(circle at 72% 85%,rgba(154,124,255,.13),transparent 32%),
+      linear-gradient(135deg,#06111f 0%,#071523 52%,#06111f 100%);
+  }
+  .deck{position:relative;width:100vw;height:100vh;z-index:1}
+  .slide{
+    position:absolute;inset:0;padding:5.2vh 5.4vw 7vh;
+    opacity:0;transform:translateX(5%);pointer-events:none;
+    transition:opacity .35s ease,transform .45s cubic-bezier(.2,.8,.2,1);
+    display:flex;flex-direction:column;
+  }
+  .slide.active{opacity:1;transform:translateX(0);pointer-events:auto}
+  .slide.prev{transform:translateX(-5%)}
+  .eyebrow{font-size:clamp(12px,1.1vw,18px);letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);font-weight:700;margin-bottom:1vh}
+  h1{font-size:clamp(42px,5.5vw,86px);line-height:1.03;letter-spacing:-.035em;margin:.3vh 0 2vh;max-width:1150px}
+  h2{font-size:clamp(30px,3.5vw,56px);line-height:1.08;letter-spacing:-.025em;margin:0 0 2.7vh}
+  h3{font-size:clamp(18px,1.55vw,26px);line-height:1.25;margin:0 0 .8vh}
+  p{font-size:clamp(15px,1.18vw,21px);line-height:1.55;color:var(--muted);margin:.6vh 0}
+  .lead{font-size:clamp(20px,1.75vw,29px);line-height:1.48;max-width:1050px;color:#dce9f8}
+  .accent{color:var(--cyan)}
+  .accent2{color:#b8a7ff}
+  .mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+  .spacer{flex:1}
+  .footer{position:absolute;left:5.4vw;right:5.4vw;bottom:2.25vh;display:flex;align-items:center;justify-content:space-between;color:#748aa3;font-size:12px;letter-spacing:.04em}
+  .source-mark{font-size:11px;color:#6f859d}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:2.2vw;min-height:0;flex:1}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25vw;min-height:0;flex:1}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:1vw;min-height:0;flex:1}
+  .card{background:linear-gradient(180deg,rgba(17,39,64,.92),rgba(10,26,44,.90));border:1px solid var(--line);border-radius:20px;padding:1.35vw;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .card::after{content:"";position:absolute;inset:auto -18% -42% auto;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(85,215,255,.14),transparent 65%)}
+  .card p{font-size:clamp(13px,1.02vw,18px)}
+  .tag{display:inline-flex;align-items:center;gap:.45em;padding:.42em .72em;border-radius:999px;background:rgba(85,215,255,.10);border:1px solid rgba(85,215,255,.22);color:#bfeeff;font-size:clamp(11px,.78vw,14px);font-weight:700;margin:.25vh .25vw .25vh 0}
+  .tag.violet{background:rgba(154,124,255,.11);border-color:rgba(154,124,255,.25);color:#d6cbff}
+  .tag.green{background:rgba(98,214,167,.10);border-color:rgba(98,214,167,.22);color:#baf4db}
+  .tag.orange{background:rgba(255,180,95,.10);border-color:rgba(255,180,95,.24);color:#ffd5a3}
+  .tag.red{background:rgba(255,125,134,.10);border-color:rgba(255,125,134,.22);color:#ffc1c6}
+  .big-number{font-size:clamp(42px,4.2vw,70px);font-weight:800;letter-spacing:-.04em;color:#fff}
+  .small-label{font-size:clamp(12px,.9vw,16px);color:#8ca1b8;line-height:1.3}
+
+  /* slide 1 */
+  .hero-wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:3vw;align-items:center;flex:1}
+  .hero-visual{height:63vh;position:relative;display:flex;align-items:center;justify-content:center}
+  .orbit{position:absolute;border:1px solid rgba(255,255,255,.14);border-radius:50%}
+  .orbit.o1{width:68%;aspect-ratio:1}.orbit.o2{width:94%;aspect-ratio:1}.orbit.o3{width:120%;aspect-ratio:1;opacity:.55}
+  .core{width:34%;aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;font-size:clamp(20px,1.6vw,30px);background:radial-gradient(circle at 30% 30%,#66e0ff,#4774ff 48%,#744ef0);box-shadow:0 0 70px rgba(77,124,255,.45)}
+  .node{position:absolute;padding:.62em .8em;border-radius:14px;background:rgba(8,24,42,.88);border:1px solid rgba(255,255,255,.14);font-weight:700;font-size:clamp(12px,.9vw,16px);box-shadow:0 14px 30px rgba(0,0,0,.26)}
+  .n1{top:8%;left:38%}.n2{top:24%;right:3%}.n3{bottom:19%;right:7%}.n4{bottom:5%;left:34%}.n5{bottom:23%;left:0}.n6{top:22%;left:2%}
+
+  /* timeline */
+  .timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:1vw;align-items:stretch;margin-top:1vh;flex:1}
+  .stage{position:relative;border-top:2px solid rgba(255,255,255,.18);padding:3vh 1.1vw 1.5vh}
+  .stage::before{content:"";position:absolute;top:-8px;left:0;width:14px;height:14px;border-radius:50%;background:#5e7896;box-shadow:0 0 0 6px rgba(94,120,150,.12)}
+  .stage.current{border-color:var(--cyan);background:linear-gradient(180deg,rgba(85,215,255,.10),transparent 55%);border-radius:0 0 18px 18px}
+  .stage.current::before{background:var(--cyan);box-shadow:0 0 0 7px rgba(85,215,255,.14),0 0 26px rgba(85,215,255,.5)}
+  .year{font-size:clamp(14px,1vw,18px);color:#7f93aa;font-weight:700}.stage-title{font-size:clamp(22px,2vw,34px);font-weight:800;margin:.7vh 0 1.2vh}.stage p{font-size:clamp(13px,.98vw,17px)}
+  .thesis{padding:1.4vh 1.2vw;border-left:4px solid var(--cyan);background:rgba(85,215,255,.08);border-radius:0 12px 12px 0;font-size:clamp(18px,1.45vw,25px);line-height:1.42;color:#eaf7ff;margin-top:2vh}
+
+  /* stack */
+  .stack{display:grid;grid-template-columns:1fr;gap:.9vh;max-width:930px}
+  .layer{display:grid;grid-template-columns:180px 1fr 250px;gap:1.3vw;align-items:center;padding:1.15vh 1.2vw;border:1px solid var(--line);border-radius:15px;background:linear-gradient(90deg,rgba(15,34,55,.95),rgba(12,29,48,.68))}
+  .layer-index{font-size:clamp(18px,1.35vw,24px);font-weight:800}.layer-desc{font-size:clamp(13px,.98vw,17px);color:#b1c1d3}.layer-asset{font-size:clamp(12px,.9vw,16px);color:#7fdfff;text-align:right;font-weight:700}
+  .side-judgement{display:flex;flex-direction:column;gap:1.2vh}
+  .judgement{padding:1.35vw;border-radius:17px;background:rgba(9,25,43,.74);border:1px solid var(--line)}
+  .judgement strong{font-size:clamp(18px,1.35vw,24px);display:block;margin-bottom:.5vh}.judgement p{font-size:clamp(13px,.95vw,17px)}
+
+  /* bet cards */
+  .bet{min-height:0}
+  .bet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1vh}
+  .bet-icon{width:43px;height:43px;border-radius:13px;background:linear-gradient(135deg,rgba(85,215,255,.25),rgba(77,124,255,.25));border:1px solid rgba(85,215,255,.25);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .bet-rank{font-size:12px;color:#6f879f;letter-spacing:.08em}
+  .bet strong{font-size:clamp(17px,1.25vw,23px);display:block;margin-bottom:.55vh}.bet p{font-size:clamp(12px,.9vw,16px)}
+  .status{display:inline-block;margin-top:1vh;font-size:12px;padding:.35em .65em;border-radius:8px;background:rgba(98,214,167,.1);color:#aef1d2;border:1px solid rgba(98,214,167,.2)}
+  .status.mid{background:rgba(255,180,95,.1);color:#ffd39b;border-color:rgba(255,180,95,.2)}
+
+  /* company cards */
+  .company-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.9vw;flex:1;min-height:0}
+  .company{padding:1.1vw;border-radius:18px;background:rgba(10,27,46,.83);border:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .company .logo{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;background:linear-gradient(135deg,rgba(85,215,255,.25),rgba(154,124,255,.28));border:1px solid rgba(255,255,255,.12);margin-bottom:1vh}
+  .company h3{font-size:clamp(17px,1.28vw,23px)}
+  .company .betline{color:#fff;font-weight:700;font-size:clamp(13px,1vw,18px);line-height:1.35;margin:.4vh 0 1vh}
+  .company p{font-size:clamp(11.5px,.82vw,15px);line-height:1.47}
+  .company .moat{margin-top:auto;padding-top:1vh;border-top:1px solid var(--line);font-size:clamp(11px,.78vw,14px);color:#8ee5ff;font-weight:700}
+  .cn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1vw;flex:1;min-height:0}
+  .platform-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1vw;flex:1;min-height:0}
+
+  /* moat */
+  .funnel{display:grid;grid-template-columns:repeat(5,1fr);gap:.75vw;align-items:center;margin:2vh 0 2.6vh}
+  .funnel-item{padding:1.4vh .9vw;border-radius:14px;text-align:center;background:rgba(12,31,52,.84);border:1px solid var(--line);position:relative;font-weight:700;font-size:clamp(13px,1vw,18px)}
+  .funnel-item:not(:last-child)::after{content:"→";position:absolute;right:-.63vw;color:#7390ac;font-weight:400}
+  .asset-row{display:grid;grid-template-columns:1fr 1fr;gap:1vw;flex:1}
+  .asset{display:grid;grid-template-columns:56px 1fr;gap:1vw;align-items:start;padding:1.2vw;border-radius:17px;background:rgba(9,26,44,.77);border:1px solid var(--line)}
+  .asset-num{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(85,215,255,.10);border:1px solid rgba(85,215,255,.23);color:#9ce8ff;font-size:20px;font-weight:900}
+  .asset strong{font-size:clamp(16px,1.2vw,22px)}.asset p{font-size:clamp(12px,.88vw,16px)}
+
+  /* takeaway */
+  .takeaway-layout{display:grid;grid-template-columns:.9fr 1.1fr;gap:2.4vw;flex:1;align-items:center}
+  .takeaway-quote{font-size:clamp(30px,3.2vw,54px);line-height:1.16;font-weight:800;letter-spacing:-.03em}
+  .takeaway-quote span{color:var(--cyan)}
+  .take-list{display:flex;flex-direction:column;gap:1.15vh}
+  .take{display:grid;grid-template-columns:52px 1fr;gap:1vw;padding:1.2vh 1vw;border-radius:16px;background:rgba(10,27,46,.82);border:1px solid var(--line)}
+  .take .n{font-size:28px;font-weight:900;color:#78ddff}.take strong{display:block;font-size:clamp(16px,1.2vw,22px);margin-bottom:.25vh}.take p{font-size:clamp(12px,.9vw,16px)}
+
+  /* social science */
+  .ss-layout{display:grid;grid-template-columns:1.02fr .98fr;gap:2vw;flex:1;min-height:0}
+  .wrong-right{display:grid;grid-template-columns:1fr 1fr;gap:1vw;margin-bottom:1.3vh}
+  .wrong,.right{padding:1.2vw;border-radius:18px;border:1px solid var(--line);background:rgba(10,27,46,.76)}
+  .wrong{border-color:rgba(255,125,134,.24)}.right{border-color:rgba(98,214,167,.28)}
+  .wrong h3{color:#ffadb3}.right h3{color:#aef0d2}
+  .chain{display:grid;grid-template-columns:repeat(5,1fr);gap:.65vw;margin-top:1vh}
+  .chain div{padding:1.1vh .55vw;text-align:center;border-radius:12px;background:rgba(85,215,255,.09);border:1px solid rgba(85,215,255,.18);font-size:clamp(11px,.82vw,15px);font-weight:700;position:relative}
+  .chain div:not(:last-child)::after{content:"→";position:absolute;right:-.5vw;color:#6f8da6}
+  .formula{margin-top:1.25vh;padding:1.2vh 1vw;border-radius:15px;background:linear-gradient(90deg,rgba(77,124,255,.16),rgba(154,124,255,.12));border:1px solid rgba(125,141,255,.24);font-size:clamp(16px,1.25vw,22px);font-weight:800;text-align:center}
+  .ss-pillars{display:grid;grid-template-columns:1fr 1fr;gap:.85vw}
+  .pillar{padding:1vw;border-radius:15px;background:rgba(8,24,41,.82);border:1px solid var(--line)}
+  .pillar strong{font-size:clamp(15px,1.1vw,20px);display:block;color:#ddecff;margin-bottom:.35vh}.pillar p{font-size:clamp(11.5px,.82vw,15px)}
+  .closing{margin-top:1.2vh;font-size:clamp(18px,1.45vw,25px);line-height:1.4;color:#eff8ff;font-weight:700}
+
+  /* controls */
+  .controls{position:fixed;right:2.1vw;bottom:2.2vh;z-index:20;display:flex;gap:.6vw;align-items:center}
+  button{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(8,24,41,.78);color:#dcecff;border-radius:12px;width:42px;height:42px;font-size:20px;cursor:pointer;backdrop-filter:blur(12px);transition:.2s}
+  button:hover{background:rgba(22,48,78,.92);transform:translateY(-1px)}
+  .progress{position:fixed;left:0;bottom:0;height:4px;background:linear-gradient(90deg,var(--cyan),var(--blue),var(--violet));z-index:30;transition:width .35s ease}
+  .dots{position:fixed;left:50%;transform:translateX(-50%);bottom:2.65vh;z-index:20;display:flex;gap:7px}
+  .dot{width:7px;height:7px;border-radius:50%;background:#486078;cursor:pointer;transition:.25s}.dot.active{width:24px;border-radius:999px;background:var(--cyan)}
+  .page-no{position:fixed;right:8.2vw;bottom:3.1vh;color:#7f95ab;font-size:12px;z-index:20}
+  .help{position:fixed;left:2vw;bottom:2.2vh;color:#698199;font-size:11px;z-index:20}
+  .source-btn{position:fixed;right:2.1vw;top:2.2vh;z-index:20;width:auto;padding:0 14px;font-size:12px;letter-spacing:.04em}
+  .modal{position:fixed;inset:0;background:rgba(2,8,15,.82);backdrop-filter:blur(10px);z-index:50;display:none;align-items:center;justify-content:center;padding:5vh 6vw}.modal.show{display:flex}
+  .modal-card{width:min(980px,92vw);max-height:82vh;overflow:auto;padding:2vw;background:#0b1b2e;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
+  .modal-card h3{font-size:26px}.sources{display:grid;grid-template-columns:1fr 1fr;gap:.65vw 1.2vw;margin-top:1.2vh}.sources a{color:#a8eaff;text-decoration:none;font-size:13px;line-height:1.35;padding:.65em .75em;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08)}.sources a:hover{background:rgba(85,215,255,.09)}
+
+  @media(max-width:900px){
+    .slide{padding:4.5vh 5vw 8vh}.hero-wrap,.grid2,.takeaway-layout,.ss-layout{grid-template-columns:1fr}.hero-visual{display:none}.company-grid{grid-template-columns:repeat(2,1fr);overflow:auto}.cn-grid,.platform-grid,.grid3,.grid4{grid-template-columns:1fr 1fr;overflow:auto}.timeline{grid-template-columns:1fr 1fr;overflow:auto}.layer{grid-template-columns:1fr}.layer-asset{text-align:left}.sources{grid-template-columns:1fr}.help{display:none}.dots{display:none}.page-no{right:22vw}
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <section class="slide active">
+    <div class="hero-wrap">
+      <div>
+        <div class="eyebrow">LLM Strategic Landscape · 2026</div>
+        <h1>大模型公司的技术下注：<br><span class="accent">从 Chatbot 到 Long-horizon Agent</span></h1>
+        <p class="lead">真正的竞争，已经不再是“谁更会回答”，而是<strong>谁能在真实环境中持续行动、修正错误，并交付可验证结果</strong>。</p>
+        <div style="margin-top:2.2vh">
+          <span class="tag">Coding Agent</span><span class="tag violet">Agentic Post-training</span><span class="tag green">Multimodal Action</span><span class="tag orange">Memory</span><span class="tag red">Cost & Reliability</span>
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="orbit o3"></div><div class="orbit o2"></div><div class="orbit o1"></div>
+        <div class="core">Long-horizon<br>Agent</div>
+        <div class="node n1">Reasoning</div><div class="node n2">Tool Use</div><div class="node n3">Computer Use</div><div class="node n4">Memory</div><div class="node n5">Multimodal</div><div class="node n6">Verifier</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">01 · Paradigm Shift</div>
+    <h2>行业主线：能力竞争正在从“生成”转向“完成任务”</h2>
+    <div class="timeline">
+      <div class="stage">
+        <div class="year">2023</div><div class="stage-title">Chatbot</div>
+        <p>单轮问答、知识覆盖、指令遵循。核心指标是“回答得像不像一个聪明人”。</p>
+      </div>
+      <div class="stage">
+        <div class="year">2024</div><div class="stage-title">Reasoning + Multimodal</div>
+        <p>复杂推理、图像视频理解、长上下文。模型开始“看得多、想得深”。</p>
+      </div>
+      <div class="stage">
+        <div class="year">2025</div><div class="stage-title">Coding Agent</div>
+        <p>代码、终端、测试和仓库提供了第一套规模化、可验证的 Agent 环境。</p>
+      </div>
+      <div class="stage current">
+        <div class="year">2026 →</div><div class="stage-title">Long-horizon Agent</div>
+        <p>持续数小时或数天工作；规划、调用工具、观察反馈、回滚、重试并交付结果。</p>
+      </div>
+    </div>
+    <div class="thesis"><strong>长文本、多模态、推理、工具调用并非四条独立赛道；它们正在汇合为 Long-horizon Agent 的底层能力。</strong></div>
+    <div class="footer"><span>判断：Coding Agent 是第一个 PMF，但不是最终终局</span><span class="source-mark">Sources: OpenAI · Anthropic · Google DeepMind</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">02 · The Real Stack</div>
+    <h2>大厂竞争不是单一模型竞争，而是五层系统竞争</h2>
+    <div class="grid2">
+      <div class="stack">
+        <div class="layer"><div class="layer-index">① Foundation Model</div><div class="layer-desc">Dense / MoE、推理、代码、原生多模态、长上下文</div><div class="layer-asset">“脑子”</div></div>
+        <div class="layer"><div class="layer-index">② Post-training</div><div class="layer-desc">Reasoning RL、Tool-use SFT、Agentic RL、Long-horizon training</div><div class="layer-asset">“如何学会工作”</div></div>
+        <div class="layer"><div class="layer-index">③ Agent Harness</div><div class="layer-desc">工具注册、状态管理、context compaction、memory、sub-agent、权限</div><div class="layer-asset">“操作系统”</div></div>
+        <div class="layer"><div class="layer-index">④ Environment</div><div class="layer-desc">代码仓库、浏览器、桌面、企业流程、实验室、仿真器</div><div class="layer-asset">“可行动的世界”</div></div>
+        <div class="layer"><div class="layer-index">⑤ Distribution</div><div class="layer-desc">Chat、IDE、Search、Office、手机、社交、云与企业数据</div><div class="layer-asset">“真实反馈闭环”</div></div>
+      </div>
+      <div class="side-judgement">
+        <div class="judgement"><strong>长上下文 ≠ 长任务</strong><p>能放入 1M token，不等于能维持目标、处理失败、跨窗口恢复并控制成本。</p></div>
+        <div class="judgement"><strong>多模态正在被 Agent 吞并</strong><p>终局不是“会看图”，而是 perception → reasoning → action → new observation。</p></div>
+        <div class="judgement"><strong>Harness 正在成为核心差异</strong><p>前沿性能越来越取决于模型、系统提示、工具、上下文管理与执行循环的联合优化。</p></div>
+      </div>
+    </div>
+    <div class="footer"><span>战略含义：不要只建设模型团队，还要建设环境、评测和 Agent 系统团队</span><span></span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">03 · Six Strategic Bets</div>
+    <h2>目前最重要的六个技术下注</h2>
+    <div class="grid3">
+      <div class="card bet"><div class="bet-head"><div class="bet-icon">⌘</div><div class="bet-rank">BET 01</div></div><strong>Coding Agent</strong><p>最成熟的 Agent PMF，也是训练规划、工具使用、失败恢复和长期执行的最佳环境。</p><span class="status">确定性最高</span></div>
+      <div class="card bet"><div class="bet-head"><div class="bet-icon">↻</div><div class="bet-rank">BET 02</div></div><strong>Agentic Post-training</strong><p>从“优化最终回答”转向“优化完整 trajectory”；奖励来自测试、执行器和任务结果。</p><span class="status">模型差距核心</span></div>
+      <div class="card bet"><div class="bet-head"><div class="bet-icon">∞</div><div class="bet-rank">BET 03</div></div><strong>Long-horizon Reliability</strong><p>能否数小时维持目标、重试、回滚和自我验证，比窗口长度本身更关键。</p><span class="status">下一代指标</span></div>
+      <div class="card bet"><div class="bet-head"><div class="bet-icon">◉</div><div class="bet-rank">BET 04</div></div><strong>Multimodal + Computer Use</strong><p>视觉、语音、视频和 GUI 共同构成 Agent 进入数字世界与物理世界的接口。</p><span class="status mid">加速融合</span></div>
+      <div class="card bet"><div class="bet-head"><div class="bet-icon">◎</div><div class="bet-rank">BET 05</div></div><strong>Memory & Personalization</strong><p>长期用户状态、关系、计划和偏好管理，将决定个人智能体能否真正“懂人”。</p><span class="status mid">下一阶段入口</span></div>
+      <div class="card bet"><div class="bet-head"><div class="bet-icon">⚡</div><div class="bet-rank">BET 06</div></div><strong>Cost / Speed / MoE</strong><p>当智力接近时，单位任务成本、延迟、吞吐和模型路由决定能否大规模部署。</p><span class="status">商业化决胜</span></div>
+    </div>
+    <div class="footer"><span>不是六选一：它们最终汇聚为“可靠、低成本、可长期工作的 Agent”</span><span></span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">04 · Frontier Players</div>
+    <h2>全球前沿公司：都做 Agent，但想控制的“环境”不同</h2>
+    <div class="company-grid">
+      <div class="company"><div class="logo">OAI</div><h3>OpenAI</h3><div class="betline">通用数字员工 / Work OS</div><p>从 coding、browser、computer use 扩展到研究、分析和完整知识工作。</p><div class="moat">护城河：ChatGPT 入口 + 通用工作数据</div></div>
+      <div class="company"><div class="logo">A</div><h3>Anthropic</h3><div class="betline">可靠的长周期知识工作</div><p>以 Claude Code 为切口，重点建设 harness、compaction、权限和 long-running agents。</p><div class="moat">护城河：高质量 coding trajectory + 可靠性</div></div>
+      <div class="company"><div class="logo">G</div><h3>Google</h3><div class="betline">多模态世界模型 + Action</div><p>搜索、Workspace、Chrome、Android、视频与机器人共同构成行动入口。</p><div class="moat">护城河：全模态数据 + 全产品分发</div></div>
+      <div class="company"><div class="logo">M</div><h3>Meta</h3><div class="betline">个人超级智能</div><p>原生多模态、工具使用、社交关系和可穿戴设备，最终指向个人长期陪伴。</p><div class="moat">护城河：社交关系链 + 个人行为数据</div></div>
+      <div class="company"><div class="logo">xAI</div><h3>xAI</h3><div class="betline">实时世界信息 + Agent</div><p>把实时信息流、大规模算力、search 和 coding 组合成低延迟 Agent。</p><div class="moat">护城河：实时数据 + 算力与物理世界潜力</div></div>
+    </div>
+    <div class="footer"><span>判断：模型能力只是入场券；谁拥有环境与反馈，谁更可能形成长期闭环</span><span class="source-mark">Sources: official product & research pages</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">05 · China & Open Ecosystem</div>
+    <h2>中国与开放生态：Agent 化明显，但各自差异化开始出现</h2>
+    <div class="cn-grid">
+      <div class="company"><div class="logo">Q</div><h3>Qwen</h3><div class="betline">开放 Agent Foundation</div><p>Agentic coding、长周期 RL、原生多模态和开放模型生态并行推进。</p><div class="moat">重点：开放权重 + Agent 训练 recipe</div></div>
+      <div class="company"><div class="logo">S</div><h3>ByteDance Seed</h3><div class="betline">多模态生产力 Agent</div><p>代码、办公、GUI、视频和内容创作统一到复杂生产力工作流。</p><div class="moat">重点：内容与用户交互数据</div></div>
+      <div class="company"><div class="logo">DS</div><h3>DeepSeek</h3><div class="betline">算法与系统效率</div><p>以推理、Agentic coding、MoE 和低成本部署持续施加行业价格压力。</p><div class="moat">重点：能力 / 成本比</div></div>
+      <div class="company"><div class="logo">GLM</div><h3>智谱</h3><div class="betline">Long-horizon Engineering</div><p>聚焦终端、仓库级工程和长时间持续执行，争夺中国版 coding-agent 心智。</p><div class="moat">重点：工程 Agent 产品化</div></div>
+      <div class="company"><div class="logo">B</div><h3>百度</h3><div class="betline">全模态 + Search / Cloud</div><p>依托搜索、知识、云与自动驾驶，路线更接近 Google 式的多入口整合。</p><div class="moat">重点：搜索与企业知识入口</div></div>
+      <div class="company"><div class="logo">T</div><h3>腾讯</h3><div class="betline">关系、记忆与数字世界</div><p>微信、企业微信、游戏与 3D/world model，适合发展长期个人与社会智能。</p><div class="moat">重点：关系链 + 长期上下文</div></div>
+    </div>
+    <div class="footer"><span>判断：国内真正稀缺的不是再做一个聊天模型，而是高质量真实 trajectory 与可验证环境</span><span class="source-mark">Sources: Qwen · Seed · DeepSeek · Tencent official</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">06 · Platforms & Infrastructure</div>
+    <h2>平台公司不一定争“最强模型”，而是争 Agent 的操作系统与基础设施税</h2>
+    <div class="platform-grid">
+      <div class="company"><div class="logo">MS</div><h3>Microsoft</h3><div class="betline">Enterprise Agent OS</div><p>构建、上下文化、运行、治理、审计和改进 Agent 的统一企业平台。</p><div class="moat">Office + GitHub + Azure + 权限治理</div></div>
+      <div class="company"><div class="logo">AWS</div><h3>Amazon</h3><div class="betline">可定制、低成本企业 Agent</div><p>通过 Bedrock、云数据和模型路由，占据企业 Agent 的部署与运行层。</p><div class="moat">云基础设施 + 企业采购渠道</div></div>
+      <div class="company"><div class="logo"></div><h3>Apple</h3><div class="betline">隐私优先的个人 Agent</div><p>端侧模型、个人上下文、跨 App 行动和 Private Cloud Compute 深度结合。</p><div class="moat">设备入口 + 用户权限 + 隐私</div></div>
+      <div class="company"><div class="logo">NV</div><h3>NVIDIA</h3><div class="betline">Agentic AI 基础设施税</div><p>用高吞吐模型、推理栈和硬件解决 long thinking、context explosion 和多 Agent 成本。</p><div class="moat">GPU + 推理软件栈 + 开放模型</div></div>
+    </div>
+    <div class="thesis"><strong>平台型赢家的逻辑：</strong>不必每次 benchmark 第一，只要所有 Agent 最终在它的设备、云、IDE、办公软件或推理栈上运行。</div>
+    <div class="footer"><span>模型层趋同后，运行层、治理层和分发层的价值会快速上升</span><span class="source-mark">Sources: Microsoft · Apple · NVIDIA official</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">07 · What Is Truly Scarce</div>
+    <h2>未来最稀缺的，不是更多网页文本，而是可验证的交互闭环</h2>
+    <div class="funnel">
+      <div class="funnel-item">State</div><div class="funnel-item">Goal</div><div class="funnel-item">Action</div><div class="funnel-item">Feedback</div><div class="funnel-item">Outcome</div>
+    </div>
+    <div class="asset-row">
+      <div class="asset"><div class="asset-num">1</div><div><strong>Environment</strong><p>模型可以操作、观察、失败和重试的真实或高保真环境。</p></div></div>
+      <div class="asset"><div class="asset-num">2</div><div><strong>Trajectory Data</strong><p>专家与 Agent 的状态—行动—观察—修正过程，而不是静态 QA。</p></div></div>
+      <div class="asset"><div class="asset-num">3</div><div><strong>Verifier / Rubric</strong><p>测试、执行器、实验结果、业务结果或经过校验的 judge。</p></div></div>
+      <div class="asset"><div class="asset-num">4</div><div><strong>Harness & Memory</strong><p>任务状态、context compaction、权限、回滚、sub-agent 与长期记忆。</p></div></div>
+      <div class="asset"><div class="asset-num">5</div><div><strong>Distribution</strong><p>真实用户任务、修正与复用形成持续的数据飞轮。</p></div></div>
+      <div class="asset"><div class="asset-num">6</div><div><strong>Economics</strong><p>单位成功任务成本，而不是单 token 价格，决定产品是否成立。</p></div></div>
+    </div>
+    <div class="footer"><span>战略护城河 = 环境 × 轨迹 × 验证 × 分发，而不是模型参数量</span><span></span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">08 · Take-away</div>
+    <h2>给 LLM 技术负责人的五个结论</h2>
+    <div class="takeaway-layout">
+      <div class="takeaway-quote">下一轮竞争不是<br>“谁更会回答”，<br>而是<span>谁能持续完成工作</span>。</div>
+      <div class="take-list">
+        <div class="take"><div class="n">01</div><div><strong>不要把长文本当独立战略</strong><p>真正目标是 long-horizon execution：维持目标、处理失败、跨窗口恢复。</p></div></div>
+        <div class="take"><div class="n">02</div><div><strong>Coding Agent 是训练场，不只是垂直应用</strong><p>它首先提供了环境、工具、自动 verifier 和明确经济价值。</p></div></div>
+        <div class="take"><div class="n">03</div><div><strong>Post-training 重心转向 trajectory</strong><p>核心问题从“多少 SFT 数据”变为“什么环境、什么奖励、如何验证结果”。</p></div></div>
+        <div class="take"><div class="n">04</div><div><strong>模型、Harness 与产品必须联合设计</strong><p>前沿 Agent 性能越来越无法仅靠升级 checkpoint 获得。</p></div></div>
+        <div class="take"><div class="n">05</div><div><strong>最值得下注的是 Domain Agentic Foundation</strong><p>领域环境 + 真实轨迹 + verifier + benchmark + agentic training。</p></div></div>
+      </div>
+    </div>
+    <div class="footer"><span>技术战略：从“训练一个模型”升级为“建设一个可自我进化的任务系统”</span><span></span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">09 · Implication for Social Science</div>
+    <h2>对 Social Science 的启发：不要做“角色扮演 Agent”，要做可验证的社会环境</h2>
+    <div class="ss-layout">
+      <div>
+        <div class="wrong-right">
+          <div class="wrong"><h3>容易跟风的方向</h3><p>给多个 Agent 设定人设，让它们讨论、投票、模拟社会，然后把“涌现”当成结论。</p></div>
+          <div class="right"><h3>真正有价值的方向</h3><p>让模型面对真实社会状态、干预与反馈，学习行为响应、机制变化和制度边界。</p></div>
+        </div>
+        <h3 style="margin-top:1.2vh">最核心的数据链</h3>
+        <div class="chain"><div>社会状态</div><div>主体行为</div><div>真实干预</div><div>响应反馈</div><div>机制更新</div></div>
+        <div class="formula">Social World Model = Environment + Intervention Data + Behavioral Response + Mechanism Verifier</div>
+        <div class="closing">社会科学的独特机会，不是复制 Coding Agent，而是提供 <span class="accent">反身性、异质性、制度约束与真实干预</span>。</div>
+      </div>
+      <div class="ss-pillars">
+        <div class="pillar"><strong>① 任务定义</strong><p>预测、反事实、政策评估、机制恢复、群体响应和长期演化。</p></div>
+        <div class="pillar"><strong>② 数据资产</strong><p>互联网回溯数据之外，重点建设“干预—真实响应”的前瞻性数据。</p></div>
+        <div class="pillar"><strong>③ 环境建设</strong><p>政策沙盒、社会模拟器、真实平台实验、人类参与的动态环境。</p></div>
+        <div class="pillar"><strong>④ Reward / Verifier</strong><p>预测误差、干预效果、机制一致性、稳健性、可解释性与审计约束。</p></div>
+        <div class="pillar"><strong>⑤ 模型训练</strong><p>SFT warm-start + outcome-grounded RL + long-horizon interaction training。</p></div>
+        <div class="pillar"><strong>⑥ 产品闭环</strong><p>教育、治理、金融和公共沟通都可成为真实干预与反馈入口。</p></div>
+      </div>
+    </div>
+    <div class="footer"><span>我们的差异化：不是更像人地说话，而是更可靠地理解、推演和验证社会机制</span><span></span></div>
+  </section>
+
+</div>
+
+<div class="help">← → / Space 翻页 · Home / End 跳转 · S 查看来源</div>
+<div class="dots" id="dots"></div>
+<div class="page-no" id="pageNo"></div>
+<div class="controls"><button id="prevBtn" aria-label="上一页">‹</button><button id="nextBtn" aria-label="下一页">›</button></div>
+<button class="source-btn" id="sourceBtn">Sources</button>
+<div class="progress" id="progress"></div>
+
+<div class="modal" id="sourceModal">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:1vw">
+      <div><div class="eyebrow">Selected Official Sources</div><h3>主要判断所依据的官方材料</h3></div>
+      <button id="closeModal" aria-label="关闭">×</button>
+    </div>
+    <p>这些链接用于核验各公司的公开技术方向；页面中的“战略下注”和“护城河”属于基于公开信息的分析判断。</p>
+    <div class="sources">
+      <a href="https://developers.openai.com/blog/run-long-horizon-tasks-with-codex" target="_blank">OpenAI · Run long-horizon tasks with Codex</a>
+      <a href="https://openai.com/codex/" target="_blank">OpenAI · Codex for real engineering work</a>
+      <a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents" target="_blank">Anthropic · Effective harnesses for long-running agents</a>
+      <a href="https://www.anthropic.com/research/long-running-Claude" target="_blank">Anthropic · Long-running Claude for scientific computing</a>
+      <a href="https://deepmind.google/models/gemini/" target="_blank">Google DeepMind · Intelligence with action</a>
+      <a href="https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/" target="_blank">Meta · Multimodal reasoning for agentic tasks</a>
+      <a href="https://qwen.ai/blog?id=qwen3-coder" target="_blank">Qwen · Agentic coding and long-horizon RL</a>
+      <a href="https://qwen.ai/blog?id=qwen3.7" target="_blank">Qwen · The Agent Frontier</a>
+      <a href="https://seed.bytedance.com/en/seed2_1" target="_blank">ByteDance Seed · AI productivity and general agents</a>
+      <a href="https://api-docs.deepseek.com/news/news260424" target="_blank">DeepSeek · V4 agentic capabilities</a>
+      <a href="https://blogs.microsoft.com/blog/2026/06/02/ai-alone-wont-change-your-business-the-system-running-it-will/" target="_blank">Microsoft · Integrated agent platform</a>
+      <a href="https://www.apple.com/newsroom/2026/06/apple-intelligence-brings-powerful-ai-capabilities-into-everyday-experiences/" target="_blank">Apple · Personal context and privacy-first intelligence</a>
+      <a href="https://www.nvidia.com/en-us/ai-data-science/foundation-models/nemotron/" target="_blank">NVIDIA · Models for long-running self-evolving agents</a>
+      <a href="https://hunyuan.tencent.com/solutions" target="_blank">Tencent Hunyuan · Memory, role-play and real-world eval loops</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const dots = document.getElementById('dots');
+  const progress = document.getElementById('progress');
+  const pageNo = document.getElementById('pageNo');
+  let index = 0;
+  let startX = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => go(i));
+    dots.appendChild(d);
+  });
+  const dotEls = [...document.querySelectorAll('.dot')];
+
+  function go(n){
+    n = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, i) => {
+      s.classList.remove('active','prev');
+      if(i === n) s.classList.add('active');
+      else if(i < n) s.classList.add('prev');
+    });
+    dotEls.forEach((d,i)=>d.classList.toggle('active',i===n));
+    index = n;
+    progress.style.width = ((index+1)/slides.length*100) + '%';
+    pageNo.textContent = String(index+1).padStart(2,'0') + ' / ' + String(slides.length).padStart(2,'0');
+  }
+  document.getElementById('prevBtn').onclick = () => go(index-1);
+  document.getElementById('nextBtn').onclick = () => go(index+1);
+  document.addEventListener('keydown', e => {
+    if(document.getElementById('sourceModal').classList.contains('show')){
+      if(e.key === 'Escape' || e.key.toLowerCase() === 's') closeSources();
+      return;
+    }
+    if(['ArrowRight','PageDown',' '].includes(e.key)){ e.preventDefault(); go(index+1); }
+    if(['ArrowLeft','PageUp'].includes(e.key)){ e.preventDefault(); go(index-1); }
+    if(e.key === 'Home') go(0);
+    if(e.key === 'End') go(slides.length-1);
+    if(e.key.toLowerCase() === 's') openSources();
+  });
+  document.addEventListener('touchstart', e => startX = e.changedTouches[0].screenX, {passive:true});
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].screenX - startX;
+    if(Math.abs(dx)>45) go(index + (dx<0 ? 1 : -1));
+  }, {passive:true});
+
+  const modal = document.getElementById('sourceModal');
+  function openSources(){ modal.classList.add('show'); }
+  function closeSources(){ modal.classList.remove('show'); }
+  document.getElementById('sourceBtn').onclick = openSources;
+  document.getElementById('closeModal').onclick = closeSources;
+  modal.addEventListener('click', e => { if(e.target === modal) closeSources(); });
+  go(0);
+</script>
+</body>
+</html>
